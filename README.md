@@ -12,11 +12,12 @@ A dynamic link aggregation platform that intelligently adapts content based on u
 - **Modern UI**: Clean black & green theme with responsive design
 
 ### Technical Highlights
-- RESTful API with Express.js backend
-- SQLite database with better-sqlite3
+- RESTful API with Express.js backend (Serverless on Netlify)
+- PostgreSQL database (Managed via Neon/Netlify DB)
 - React + TypeScript frontend with Vite
 - Framer Motion animations
 - Real-time analytics tracking
+
 
 ## 🚀 Quick Start
 
@@ -46,22 +47,28 @@ npm install
 
 4. **Set up environment variables**
 
-Create `backend/.env`:
+Create `backend/.env` for local development:
 ```env
 PORT=3001
-NODE_ENV=development
-DATABASE_URL=./database.sqlite
+DATABASE_URL=your_postgres_connection_string
 ```
 
 5. **Start the backend server**
 ```bash
 cd backend
-npm start
+npm run dev
 ```
 
 The backend will run on `http://localhost:3001`
 
-6. **Start the frontend development server**
+6. **Netlify Deployment**
+This project is configured for one-click deployment to Netlify:
+```bash
+npx netlify deploy --prod
+```
+The backend will automatically provision a Neon PostgreSQL database when initialized via `netlify db init`.
+
+7. **Start the frontend development server**
 ```bash
 cd frontend
 npm run dev

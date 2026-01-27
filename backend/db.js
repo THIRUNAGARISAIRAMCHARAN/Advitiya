@@ -1,55 +1,101 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const { Pool } = require('pg');
+require('dotenv').config();
 
-const db = new Database(path.join(__dirname, 'database.sqlite'));
+const pool = new Pool({
+  connectionString: process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL,
+  ssl: (process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL || '').includes('supabase.co') || (process.env.NETLIFY_DATABASE_URL || '').includes('neon.tech')
+    ? { rejectUnauthorized: false }
+    : false
+});
 
-// Create tables if they don't exist
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
 
-  CREATE TABLE IF NOT EXISTS hubs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER REFERENCES users(id),
-    slug TEXT UNIQUE NOT NULL,
-    title TEXT,
-    description TEXT,
-    theme_config TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+// Auto-migration on first connect
+const initDb = async () => {
+  try {
+    console.log('Verifying database schema...');
+    await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS hubs (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                slug VARCHAR(50) UNIQUE NOT NULL,
+                title VARCHAR(100),
+                description TEXT,
+                theme_config JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS links (
+                id SERIAL PRIMARY KEY,
+                hub_id INTEGER REFERENCES hubs(id),
+                title VARCHAR(100) NOT NULL,
+                url TEXT NOT NULL,
+                icon VARCHAR(50),
+                position INTEGER DEFAULT 0,
+                clicks INTEGER DEFAULT 0,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS rules (
+                id SERIAL PRIMARY KEY,
+                hub_id INTEGER REFERENCES hubs(id),
+                name VARCHAR(100),
+                type VARCHAR(50) NOT NULL,
+                conditions JSONB NOT NULL,
+                action JSONB NOT NULL,
+                priority INTEGER DEFAULT 0,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS analytics (
+                id SERIAL PRIMARY KEY,
+                hub_id INTEGER REFERENCES hubs(id),
+                link_id INTEGER REFERENCES links(id),
+                event_type VARCHAR(50) NOT NULL,
+                visitor_id VARCHAR(100),
+                device_type VARCHAR(50),
+                country VARCHAR(5),
+                user_agent TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+    console.log('Database schema verified/created.');
+  } catch (err) {
+    console.error('Database initialization error:', err);
+  }
+};
 
-  CREATE TABLE IF NOT EXISTS links (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    hub_id INTEGER REFERENCES hubs(id),
-    title TEXT NOT NULL,
-    url TEXT NOT NULL,
-    icon TEXT,
-    position INTEGER DEFAULT 0,
-    clicks INTEGER DEFAULT 0,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+// We don't block here, but it will run on first require
+initDb();
 
-  CREATE TABLE IF NOT EXISTS analytics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    hub_id INTEGER REFERENCES hubs(id),
-    link_id INTEGER REFERENCES links(id),
-    event_type TEXT NOT NULL,
-    visitor_id TEXT,
-    device_type TEXT,
-    country TEXT,
-    user_agent TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
 
 module.exports = {
-    exec: (sql) => db.exec(sql),
-    query: (sql, params = []) => db.prepare(sql).all(params),
-    get: (sql, params = []) => db.prepare(sql).get(params),
-    run: (sql, params = []) => db.prepare(sql).run(params),
+  exec: async (sql) => {
+    const client = await pool.connect();
+    try {
+      await client.query(sql);
+    } finally {
+      client.release();
+    }
+  },
+  query: async (sql, params = []) => {
+    const res = await pool.query(sql, params);
+    return res.rows;
+  },
+  get: async (sql, params = []) => {
+    const res = await pool.query(sql, params);
+    return res.rows[0];
+  },
+  run: async (sql, params = []) => {
+    const res = await pool.query(sql, params);
+    return {
+      lastInsertRowid: res.rows[0]?.id,
+      changes: res.rowCount
+    };
+  },
+  pool
 };

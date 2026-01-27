@@ -64,9 +64,11 @@ const Dashboard: React.FC = () => {
             setRules(rulesData);
         } catch (error) {
             console.error('Failed to fetch dashboard data:', error);
+            alert('Error connecting to the database. Please ensure you have configured DATABASE_URL on Netlify and run the migration.sql in Supabase.');
         } finally {
             setIsLoading(false);
         }
+
     };
 
     const handleAddLink = async (e: React.FormEvent) => {
@@ -91,7 +93,9 @@ const Dashboard: React.FC = () => {
             }
         } catch (error) {
             console.error('Failed to add link:', error);
+            alert('Failed to add link. Check your database connection.');
         }
+
     };
 
     const handleDeleteLink = async (id: string) => {
@@ -105,7 +109,9 @@ const Dashboard: React.FC = () => {
             }
         } catch (error) {
             console.error('Failed to delete link:', error);
+            alert('Failed to delete link. Please try again.');
         }
+
     };
 
     const handleEditLink = async (e: React.FormEvent) => {

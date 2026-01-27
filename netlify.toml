@@ -1,14 +1,11 @@
-# Netlify Full-Stack Configuration
-
 [build]
-  base = "frontend"
-  command = "npm run build"
-  publish = "dist"
-  functions = "../backend/netlify/functions"
+  command = "cd frontend && npx vite build"
+  publish = "frontend/dist"
+  functions = "backend/netlify/functions"
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  to = "/.netlify/functions/api/:splat"
   status = 200
 
 [[redirects]]
@@ -17,5 +14,6 @@
   status = 200
 
 [functions]
-  directory = "../backend/netlify/functions"
+  directory = "backend/netlify/functions"
   node_bundler = "esbuild"
+
