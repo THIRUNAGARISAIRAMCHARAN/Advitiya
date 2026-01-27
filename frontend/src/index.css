@@ -1,26 +1,23 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-background: #050505;
+  --color-primary: #00FF88;
+  --color-primary-glow: rgba(0, 255, 136, 0.5);
+  --color-surface: rgba(255, 255, 255, 0.05);
+  --color-surface-hover: rgba(255, 255, 255, 0.1);
+  --color-muted: #888888;
+
+  --shadow-neon: 0 0 20px rgba(0, 255, 136, 0.4);
+  --shadow-neon-strong: 0 0 40px rgba(0, 255, 136, 0.6);
+
+  --font-sans: 'Inter', sans-serif;
+}
 
 @layer base {
-  :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 100%;
-    --primary: 152 100% 50%;
-    --muted: 0 0% 53%;
-  }
-
-  .light-mode {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 4%;
-    --primary: 152 100% 50%;
-    --muted: 0 0% 40%;
-  }
-
   body {
-    @apply bg-background text-foreground antialiased overflow-x-hidden;
+    @apply bg-background text-white antialiased overflow-x-hidden;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
-    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 
@@ -35,9 +32,5 @@
 
   .glass-hover {
     @apply hover:bg-white/10 transition-colors duration-300;
-  }
-
-  .shadow-neon {
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
   }
 }

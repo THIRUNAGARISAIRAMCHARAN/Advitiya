@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import QRCode from 'qrcode';
 import {
     BarChart3,
     MousePointer2,
@@ -13,8 +12,7 @@ import {
     Zap,
     Edit2,
     ChevronUp,
-    ChevronDown,
-    QrCode
+    ChevronDown
 } from 'lucide-react';
 
 interface Link {
@@ -41,7 +39,6 @@ const Dashboard: React.FC = () => {
     const [newLink, setNewLink] = useState({ title: '', url: '' });
     const [editingLink, setEditingLink] = useState<Link | null>(null);
     const [rules, setRules] = useState<any[]>([]);
-    const [isDarkMode, setIsDarkMode] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -58,7 +55,11 @@ const Dashboard: React.FC = () => {
             const linksData = await linksRes.json();
             const statsData = await statsRes.json();
             const rulesData = await rulesRes.json();
-            setLinks(linksData);
+
+            // Sort links by clicks (highest first)
+            const sortedLinks = linksData.sort((a: Link, b: Link) => b.clicks - a.clicks);
+
+            setLinks(sortedLinks);
             setStats(statsData);
             setRules(rulesData);
         } catch (error) {
@@ -80,7 +81,8 @@ const Dashboard: React.FC = () => {
             });
             if (res.ok) {
                 const addedLink = await res.json();
-                setLinks([addedLink, ...links]);
+                const updatedLinks = [addedLink, ...links].sort((a, b) => b.clicks - a.clicks);
+                setLinks(updatedLinks);
                 setNewLink({ title: '', url: '' });
                 setIsAddModalOpen(false);
                 // Refresh stats
@@ -148,29 +150,6 @@ const Dashboard: React.FC = () => {
         }
     };
 
-    const handleGenerateQR = async (url: string, title: string) => {
-        try {
-            const qrDataUrl = await QRCode.toDataURL(url, {
-                width: 300,
-                margin: 2,
-                color: {
-                    dark: '#00FF88',
-                    light: isDarkMode ? '#0A0A0A' : '#FFFFFF'
-                }
-            });
-
-            // Create download link
-            const link = document.createElement('a');
-            link.href = qrDataUrl;
-            link.download = `${title.replace(/\s+/g, '-')}-QR.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        } catch (error) {
-            console.error('Failed to generate QR code:', error);
-        }
-    };
-
     const handleLinkClick = async (url: string, id: string) => {
         window.open(url, '_blank', 'noopener,noreferrer');
         try {
@@ -179,8 +158,10 @@ const Dashboard: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ link_id: id, event_type: 'click' })
             });
-            // Update UI optimistically or refresh
-            setLinks(prev => prev.map(l => l.id === id ? { ...l, clicks: l.clicks + 1 } : l));
+            // Update UI optimistically and re-sort by clicks
+            const updatedLinks = links.map(l => l.id === id ? { ...l, clicks: l.clicks + 1 } : l)
+                .sort((a, b) => b.clicks - a.clicks);
+            setLinks(updatedLinks);
             const statsUpdate = await fetch(`${API_BASE}/stats`);
             setStats(await statsUpdate.json());
         } catch (error) {
@@ -286,16 +267,6 @@ const Dashboard: React.FC = () => {
                                             <p className="text-xs text-muted">Clicks</p>
                                             <p className="font-bold text-primary">{link.clicks}</p>
                                         </div>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleGenerateQR(link.url, link.title);
-                                            }}
-                                            className="p-2 text-muted hover:text-primary transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
-                                            title="Generate QR Code"
-                                        >
-                                            <QrCode size={18} />
-                                        </button>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
