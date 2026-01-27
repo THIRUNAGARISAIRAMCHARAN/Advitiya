@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import QRCode from 'qrcode';
 import {
     BarChart3,
     MousePointer2,
@@ -12,7 +13,8 @@ import {
     Zap,
     Edit2,
     ChevronUp,
-    ChevronDown
+    ChevronDown,
+    QrCode
 } from 'lucide-react';
 
 interface Link {
@@ -39,6 +41,7 @@ const Dashboard: React.FC = () => {
     const [newLink, setNewLink] = useState({ title: '', url: '' });
     const [editingLink, setEditingLink] = useState<Link | null>(null);
     const [rules, setRules] = useState<any[]>([]);
+    const [isDarkMode, setIsDarkMode] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -142,6 +145,29 @@ const Dashboard: React.FC = () => {
             }
         } catch (error) {
             console.error('Failed to reorder link:', error);
+        }
+    };
+
+    const handleGenerateQR = async (url: string, title: string) => {
+        try {
+            const qrDataUrl = await QRCode.toDataURL(url, {
+                width: 300,
+                margin: 2,
+                color: {
+                    dark: '#00FF88',
+                    light: isDarkMode ? '#0A0A0A' : '#FFFFFF'
+                }
+            });
+
+            // Create download link
+            const link = document.createElement('a');
+            link.href = qrDataUrl;
+            link.download = `${title.replace(/\s+/g, '-')}-QR.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Failed to generate QR code:', error);
         }
     };
 
@@ -260,6 +286,16 @@ const Dashboard: React.FC = () => {
                                             <p className="text-xs text-muted">Clicks</p>
                                             <p className="font-bold text-primary">{link.clicks}</p>
                                         </div>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleGenerateQR(link.url, link.title);
+                                            }}
+                                            className="p-2 text-muted hover:text-primary transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                                            title="Generate QR Code"
+                                        >
+                                            <QrCode size={18} />
+                                        </button>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
