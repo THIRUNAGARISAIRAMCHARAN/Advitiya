@@ -1,16 +1,21 @@
-# Netlify Configuration for Vite React App
+# Netlify Full-Stack Configuration
 
-# Build settings
 [build]
   base = "frontend"
   command = "npm run build"
   publish = "dist"
+  functions = "../backend/netlify/functions"
 
-# Redirect all routes to index.html for SPA routing
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# Environment variables (set these in Netlify dashboard)
-# VITE_API_URL = your backend URL from Render/Railway
+[functions]
+  directory = "../backend/netlify/functions"
+  node_bundler = "esbuild"

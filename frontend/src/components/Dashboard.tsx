@@ -28,7 +28,7 @@ interface Stats {
     ctr: string;
 }
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = '/api';
 
 const Dashboard: React.FC = () => {
     const [links, setLinks] = useState<Link[]>([]);
