@@ -35,8 +35,10 @@ const Dashboard: React.FC = () => {
     const [stats, setStats] = useState<Stats>({ totalClicks: '0', uniqueVisitors: '0', ctr: '0%' });
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
     const [newLink, setNewLink] = useState({ title: '', url: '' });
     const [editingLink, setEditingLink] = useState<Link | null>(null);
+    const [rules, setRules] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -45,14 +47,17 @@ const Dashboard: React.FC = () => {
 
     const fetchDashboardData = async () => {
         try {
-            const [linksRes, statsRes] = await Promise.all([
+            const [linksRes, statsRes, rulesRes] = await Promise.all([
                 fetch(`${API_BASE}/links`),
-                fetch(`${API_BASE}/stats`)
+                fetch(`${API_BASE}/stats`),
+                fetch(`${API_BASE}/rules`)
             ]);
             const linksData = await linksRes.json();
             const statsData = await statsRes.json();
+            const rulesData = await rulesRes.json();
             setLinks(linksData);
             setStats(statsData);
+            setRules(rulesData);
         } catch (error) {
             console.error('Failed to fetch dashboard data:', error);
         } finally {
@@ -307,7 +312,10 @@ const Dashboard: React.FC = () => {
                             </div>
                         </div>
 
-                        <button className="w-full py-3 border border-white/10 rounded-xl text-xs font-bold hover:bg-white/5 transition-all cursor-pointer">
+                        <button
+                            onClick={() => setIsRuleModalOpen(true)}
+                            className="w-full py-3 border border-white/10 rounded-xl text-xs font-bold hover:bg-white/5 transition-all cursor-pointer"
+                        >
                             Configure New Rule
                         </button>
                     </div>
@@ -409,6 +417,51 @@ const Dashboard: React.FC = () => {
                                 Save Changes
                             </button>
                         </form>
+                    </motion.div>
+                </div>
+            )}
+
+            {/* Rule Configuration Modal */}
+            {isRuleModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="glass w-full max-w-md p-8 rounded-3xl border border-white/10 relative"
+                    >
+                        <button
+                            onClick={() => setIsRuleModalOpen(false)}
+                            className="absolute top-4 right-4 text-muted hover:text-white transition-colors cursor-pointer"
+                        >
+                            <Trash2 size={20} className="rotate-45" />
+                        </button>
+                        <h2 className="text-2xl font-black mb-4">Configure New Rule</h2>
+                        <p className="text-sm text-muted mb-6">
+                            Rules are automatically applied based on time, device, location, or performance metrics.
+                        </p>
+                        <div className="space-y-4">
+                            <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                                <p className="text-sm font-bold mb-2">Example: Time-Based Rule</p>
+                                <p className="text-xs text-muted">Show work links only during 9 AM - 5 PM</p>
+                            </div>
+                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                                <p className="text-sm font-bold mb-2">Example: Device-Based Rule</p>
+                                <p className="text-xs text-muted">Prioritize mobile-friendly links on mobile devices</p>
+                            </div>
+                            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                                <p className="text-sm font-bold mb-2">Example: Performance Rule</p>
+                                <p className="text-xs text-muted">Auto-promote links with 10+ clicks to the top</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => {
+                                alert('Rule configuration UI coming soon! Rules engine is fully functional via API.');
+                                setIsRuleModalOpen(false);
+                            }}
+                            className="w-full py-4 bg-primary text-black font-black rounded-xl hover:shadow-neon transition-all mt-6 cursor-pointer"
+                        >
+                            Got It
+                        </button>
                     </motion.div>
                 </div>
             )}

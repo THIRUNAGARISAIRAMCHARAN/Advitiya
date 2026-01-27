@@ -163,6 +163,74 @@ router.post('/analytics', (req, res) => {
     res.json({ success: true });
 });
 
+// RULES MANAGEMENT
+router.get('/rules', (req, res) => {
+    try {
+        const hub = ensureHubExists();
+        const rules = db.query('SELECT * FROM rules WHERE hub_id = ? ORDER BY priority DESC', [hub.id]);
+        res.json(rules);
+    } catch (error) {
+        console.error('Error fetching rules:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+router.post('/rules', (req, res) => {
+    try {
+        const { name, type, conditions, action, priority } = req.body;
+        const hub = ensureHubExists();
+
+        if (!type || !conditions || !action) {
+            return res.status(400).json({ error: 'Type, conditions, and action are required' });
+        }
+
+        const conditionsStr = typeof conditions === 'string' ? conditions : JSON.stringify(conditions);
+        const actionStr = typeof action === 'string' ? action : JSON.stringify(action);
+
+        const result = db.run(
+            'INSERT INTO rules (hub_id, name, type, conditions, action, priority, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [hub.id, name || `${type} rule`, type, conditionsStr, actionStr, priority || 0, 1]
+        );
+
+        const newRule = db.get('SELECT * FROM rules WHERE id = ?', [result.lastInsertRowid]);
+        res.json(newRule);
+    } catch (error) {
+        console.error('Error creating rule:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+router.put('/rules/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, type, conditions, action, priority, is_active } = req.body;
+
+        const conditionsStr = typeof conditions === 'string' ? conditions : JSON.stringify(conditions);
+        const actionStr = typeof action === 'string' ? action : JSON.stringify(action);
+
+        db.run(
+            'UPDATE rules SET name = ?, type = ?, conditions = ?, action = ?, priority = ?, is_active = ? WHERE id = ?',
+            [name, type, conditionsStr, actionStr, priority, is_active, id]
+        );
+
+        const updated = db.get('SELECT * FROM rules WHERE id = ?', [id]);
+        res.json(updated);
+    } catch (error) {
+        console.error('Error updating rule:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+router.delete('/rules/:id', (req, res) => {
+    try {
+        db.run('DELETE FROM rules WHERE id = ?', [req.params.id]);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting rule:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 // PUBLIC HUB VIEW
 router.get('/hub/:slug', async (req, res) => {
     const { slug } = req.params;
