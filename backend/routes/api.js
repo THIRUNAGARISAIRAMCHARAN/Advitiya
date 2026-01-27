@@ -79,6 +79,46 @@ router.post('/links', (req, res) => {
     }
 });
 
+router.put('/links/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, url } = req.body;
+
+        if (!title || !url) {
+            return res.status(400).json({ error: 'Title and URL are required' });
+        }
+
+        db.run('UPDATE links SET title = ?, url = ? WHERE id = ?', [title, url, id]);
+        const updated = db.get('SELECT * FROM links WHERE id = ?', [id]);
+        res.json(updated);
+    } catch (error) {
+        console.error('Error updating link:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+router.patch('/links/reorder', (req, res) => {
+    try {
+        const { linkId, newPosition } = req.body;
+
+        if (linkId === undefined || newPosition === undefined) {
+            return res.status(400).json({ error: 'linkId and newPosition are required' });
+        }
+
+        // Update the position of the target link
+        db.run('UPDATE links SET position = ? WHERE id = ?', [newPosition, linkId]);
+
+        // Get all links to return updated list
+        const hub = ensureHubExists();
+        const links = db.query('SELECT * FROM links WHERE hub_id = ? ORDER BY position ASC', [hub.id]);
+
+        res.json({ success: true, links });
+    } catch (error) {
+        console.error('Error reordering links:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 router.delete('/links/:id', (req, res) => {
     try {
         db.run('DELETE FROM links WHERE id = ?', [req.params.id]);

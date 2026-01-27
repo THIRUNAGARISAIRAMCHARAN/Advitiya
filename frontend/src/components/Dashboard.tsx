@@ -9,7 +9,10 @@ import {
     Settings2,
     Layout,
     ExternalLink,
-    Zap
+    Zap,
+    Edit2,
+    ChevronUp,
+    ChevronDown
 } from 'lucide-react';
 
 interface Link {
@@ -31,7 +34,9 @@ const Dashboard: React.FC = () => {
     const [links, setLinks] = useState<Link[]>([]);
     const [stats, setStats] = useState<Stats>({ totalClicks: '0', uniqueVisitors: '0', ctr: '0%' });
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [newLink, setNewLink] = useState({ title: '', url: '' });
+    const [editingLink, setEditingLink] = useState<Link | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -90,6 +95,48 @@ const Dashboard: React.FC = () => {
             }
         } catch (error) {
             console.error('Failed to delete link:', error);
+        }
+    };
+
+    const handleEditLink = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingLink) return;
+
+        try {
+            const res = await fetch(`${API_BASE}/links/${editingLink.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: editingLink.title, url: editingLink.url })
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setLinks(links.map(l => l.id === updated.id ? updated : l));
+                setIsEditModalOpen(false);
+                setEditingLink(null);
+            }
+        } catch (error) {
+            console.error('Failed to edit link:', error);
+        }
+    };
+
+    const handleMoveLink = async (linkId: string, direction: 'up' | 'down') => {
+        const currentIndex = links.findIndex(l => l.id === linkId);
+        if (currentIndex === -1) return;
+
+        const newPosition = direction === 'up' ? Math.max(0, currentIndex - 1) : Math.min(links.length - 1, currentIndex + 1);
+
+        try {
+            const res = await fetch(`${API_BASE}/links/reorder`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ linkId, newPosition })
+            });
+            if (res.ok) {
+                const { links: updatedLinks } = await res.json();
+                setLinks(updatedLinks);
+            }
+        } catch (error) {
+            console.error('Failed to reorder link:', error);
         }
     };
 
@@ -211,6 +258,16 @@ const Dashboard: React.FC = () => {
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
+                                                setEditingLink(link);
+                                                setIsEditModalOpen(true);
+                                            }}
+                                            className="p-2 text-muted hover:text-primary transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                                        >
+                                            <Edit2 size={18} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
                                                 handleDeleteLink(link.id);
                                             }}
                                             className="p-2 text-muted hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
@@ -299,6 +356,57 @@ const Dashboard: React.FC = () => {
                                 className="w-full py-4 bg-primary text-black font-black rounded-xl hover:shadow-neon transition-all mt-4 cursor-pointer"
                             >
                                 Add Link
+                            </button>
+                        </form>
+                    </motion.div>
+                </div>
+            )}
+
+            {/* Edit Link Modal */}
+            {isEditModalOpen && editingLink && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="glass w-full max-w-md p-8 rounded-3xl border border-white/10 relative"
+                    >
+                        <button
+                            onClick={() => {
+                                setIsEditModalOpen(false);
+                                setEditingLink(null);
+                            }}
+                            className="absolute top-4 right-4 text-muted hover:text-white transition-colors cursor-pointer"
+                        >
+                            <Trash2 size={20} className="rotate-45" />
+                        </button>
+                        <h2 className="text-2xl font-black mb-6">Edit Link</h2>
+                        <form onSubmit={handleEditLink} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-widest text-muted mb-2">Title</label>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-primary focus:outline-none transition-colors"
+                                    placeholder="e.g. My Website"
+                                    value={editingLink.title}
+                                    onChange={(e) => setEditingLink({ ...editingLink, title: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-widest text-muted mb-2">URL</label>
+                                <input
+                                    type="url"
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-primary focus:outline-none transition-colors"
+                                    placeholder="https://example.com"
+                                    value={editingLink.url}
+                                    onChange={(e) => setEditingLink({ ...editingLink, url: e.target.value })}
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="w-full py-4 bg-primary text-black font-black rounded-xl hover:shadow-neon transition-all mt-4 cursor-pointer"
+                            >
+                                Save Changes
                             </button>
                         </form>
                     </motion.div>
